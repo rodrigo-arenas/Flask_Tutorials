@@ -1,29 +1,74 @@
 from flask import Flask, jsonify, request
+from flask_restful import Api, Resource
 
 app = Flask(__name__)
+api = Api(app)
 
 
-@app.route('/')
-def hello_world():
-    return "hello world!"
+def check_posted_data(data, func_name):
+    if func_name == 'add' or func_name == 'subtract':
+        if 'x' not in data or 'y' not in data:
+            return 301
+        else:
+            return 200
 
 
-@app.route('/info')
-def information():
-    return jsonify({
-        "Name": "FlaskApp",
-        "Version": 0.1
-    })
+class Add(Resource):
+    def post(self):
+        data = request.get_json()
+        status_code = check_posted_data(data, 'add')
+        if status_code != 200:
+            ret = {
+                "Message": "An error happened",
+                "Status Code": status_code
+            }
+            return ret, status_code
+
+        x = data['x']
+        y = data['y']
+        x = int(x)
+        y = int(y)
+        ret = x + y
+        ret_map = {
+            'Message': ret,
+            'Status Code': status_code
+        }
+        return ret_map, 200
 
 
-@app.route("/add_two_nums", methods=["POST"])
-def add_tow_nums():
-    data = request.get_json()
-    x = data['x']
-    y = data['y']
-    z = x+y
-    return jsonify(z)
+class Subtract(Resource):
+    def post(self):
+        data = request.get_json()
+        status_code = check_posted_data(data, 'subtract')
+        if status_code != 200:
+            ret = {
+                "Message": "An error happened",
+                "Status Code": status_code
+            }
+            return ret, status_code
 
+        x = data['x']
+        y = data['y']
+        x = int(x)
+        y = int(y)
+        ret = x - y
+        ret_map = {
+            'Message': ret,
+            'Status Code': status_code
+        }
+        return ret_map, 200
+
+
+class Multiply(Resource):
+    pass
+
+
+class Divide(Resource):
+    pass
+
+
+api.add_resource(Add, '/add')
+api.add_resource(Subtract, '/subtract')
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000)
