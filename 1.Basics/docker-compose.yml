@@ -1,0 +1,9 @@
+#docker-compose version
+version: '3'
+
+#define the services to start, each build search a Dockerfile
+services:
+  web:
+    build: ./web
+    ports:
+    - "5000:5000"
