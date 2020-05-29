@@ -20,6 +20,10 @@ def check_posted_data(data, func_name):
             return 200
 
 
+class Home(Resource):
+    def get(self):
+        return "Hello World"
+
 class Add(Resource):
     def post(self):
         data = request.get_json()
@@ -112,6 +116,7 @@ class Divide(Resource):
         return ret_map, 200
 
 
+api.add_resource(Home,'/')
 api.add_resource(Add, '/add')
 api.add_resource(Subtract, '/subtract')
 api.add_resource(Multiply, '/multiply')
