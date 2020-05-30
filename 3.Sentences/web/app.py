@@ -89,7 +89,7 @@ class Store(Resource):
 
 
 class GetSentence(Resource):
-    def get(self):
+    def post(self):
         posted_data = request.get_json()
         username = posted_data['username']
         password = posted_data['password']
