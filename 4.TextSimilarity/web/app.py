@@ -13,7 +13,7 @@ users = db["Users"]
 
 
 def user_exists(username):
-    if users.find({"Username": username}).count() == 0:
+    if users.find({"Username": username}).count_documents () == 0:
         return False
     else:
         return True
@@ -44,7 +44,7 @@ class Register(Resource):
         if user_exists(username):
             ret_json = {
                 'status': 301,
-                'message': "Invalid username"
+                'message': "Username already register"
             }
             return ret_json, 301
 
