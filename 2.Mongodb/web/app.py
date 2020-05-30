@@ -1,94 +1,144 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask_restful import Api, Resource
 from pymongo import MongoClient
-import bcrypt
 
 app = Flask(__name__)
 api = Api(app)
 # The client db name must match docker-compose db service
 client = MongoClient("mongodb://db:27017")
-db = client.sentencesDB
-users = db['Users']
+db = client.aNewDB
+UserNum = db["UserNum"]
+UserNum.insert({
+    "num_of_users": 0
+})
 
 
-def verify_pw(username, password):
-    hashed_pw = users.find({'Username': username})[0]['Password']
-    if bcrypt.hashpw(password.encode('utf8'), hashed_pw) == hashed_pw
-        return True
-    else:
-        return False
-
-def count_tokens(username):
-    tokens = users.find({'Username': username})[0]['Tokens']
-    return tokens
+class Visit(Resource):
+    def get(self):
+        prev_num = UserNum.find({})[0]['num_of_users']
+        new_num = prev_num + 1
+        UserNum.update({}, {"$set": {"num_of_users": new_num}})
+        return str("Hello user " + str(new_num))
 
 
-class Register(Resource):
+def check_posted_data(data, func_name):
+    if func_name == 'add' or func_name == 'subtract' or func_name == 'multiply':
+        if 'x' not in data or 'y' not in data:
+            return 301
+        else:
+            return 200
+    elif func_name == 'divide':
+        if 'x' not in data or 'y' not in data:
+            return 301
+        elif data['y'] == 0:
+            return 302
+        else:
+            return 200
+
+
+class Home(Resource):
+    def get(self):
+        return "Hello World"
+
+
+class Add(Resource):
     def post(self):
-        posted_data = request.get_json()
-        username = posted_data['username']
-        password = posted_data['password']
-        # Generate hash to securely store password
-        hashed_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
+        data = request.get_json()
+        status_code = check_posted_data(data, 'add')
+        if status_code != 200:
+            ret = {
+                "Message": "An error happened",
+                "Status Code": status_code
+            }
+            return ret, status_code
 
-        users.insert_many({
-            'Username': username,
-            'Password': hashed_pw,
-            'Sentence': "",
-            'Tokens': 10
-        })
-
-        ret_json = {
-            'status': 200,
-            'message': 'You have succesfully connected to the API'
+        x = data['x']
+        y = data['y']
+        x = int(x)
+        y = int(y)
+        ret = x + y
+        ret_map = {
+            'Message': ret,
+            'Status Code': status_code
         }
+        return ret_map, 200
 
-        return ret_json, 200
 
-
-class Store(Resource):
+class Subtract(Resource):
     def post(self):
-        posted_data = request.get_json()
-        username = posted_data['username']
-        password = posted_data['password']
-        sentence = posted_data['sentence']
-
-        correct_pw = verify_pw(username, password)
-        if not correct_pw:
-            ret_json = {
-                'status': 302,
-                'message': 'Incorrect username or password'
+        data = request.get_json()
+        status_code = check_posted_data(data, 'subtract')
+        if status_code != 200:
+            ret = {
+                "Message": "An error happened",
+                "Status Code": status_code
             }
-            return ret_json, 302
+            return ret, status_code
 
-        num_tokens = count_tokens(username)
-        if num_tokens <= 0:
-            ret_json = {
-                'status': 301,
-                'message': 'Not enough tokens'
-
-            }
-            return ret_json, 301
-
-        users.update({
-            "Username": username},
-            {"$set": {
-                "Sentence": sentence,
-                "Tokens": num_tokens - 1
-            }
-            }
-        )
-
-        ret_json = {
-            'status': 200,
-            'message': 'Sentence saved susccesfully'
+        x = data['x']
+        y = data['y']
+        x = int(x)
+        y = int(y)
+        ret = x - y
+        ret_map = {
+            'Message': ret,
+            'Status Code': status_code
         }
+        return ret_map, 200
 
-        return ret_json, 200
+
+class Multiply(Resource):
+    def post(self):
+        data = request.get_json()
+        status_code = check_posted_data(data, 'multiply')
+        if status_code != 200:
+            ret = {
+                "Message": "An error happened",
+                "Status Code": status_code
+            }
+            return ret, status_code
+
+        x = data['x']
+        y = data['y']
+        x = int(x)
+        y = int(y)
+        ret = x * y
+        ret_map = {
+            'Message': ret,
+            'Status Code': status_code
+        }
+        return ret_map, 200
 
 
-api.add_resource(Register, '/register')
-api.add_resource(Store, '/store')
+class Divide(Resource):
+    def post(self):
+        data = request.get_json()
+        status_code = check_posted_data(data, 'divide')
+        if status_code != 200:
+            ret = {
+                "Message": "An error happened",
+                "Status Code": status_code
+            }
+            return ret, status_code
+
+        x = data['x']
+        y = data['y']
+        x = int(x)
+        y = int(y)
+        ret = (x * 1.0) / y
+        ret_map = {
+            'Message': ret,
+            'Status Code': status_code
+        }
+        return ret_map, 200
+
+
+api.add_resource(Home, '/')
+api.add_resource(Add, '/add')
+api.add_resource(Subtract, '/subtract')
+api.add_resource(Multiply, '/multiply')
+api.add_resource(Divide, '/divide')
+api.add_resource(Visit, '/hello')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
