@@ -87,7 +87,7 @@ class Detect(Resource):
             return ret_json, 302
 
         num_tokens = count_tokens(username)
-        if num_tokens <=0:
+        if num_tokens <= 0:
             ret_json = {
                 'status': 303,
                 'message': "out of tokens"
@@ -118,6 +118,7 @@ class Detect(Resource):
 
         return ret_json, 200
 
+
 class Refill(Resource):
     def post(self):
         posted_data = request.get_json()
@@ -143,17 +144,16 @@ class Refill(Resource):
 
         current_tokens = count_tokens(username)
         users.update(
+            {"Username": username},
             {
-                "Username": username,
-                {
-                    "$set": {"Tokens": current_tokens +refill_amount}
-                }
-            })
+                "$set": {"Tokens": current_tokens + refill_amount}
+            }
+        )
 
         ret_json = {
             'status': 200,
             'message': "Refilled Tokens",
-            'tokens': current_tokens +refill_amount
+            'tokens': current_tokens + refill_amount
         }
         return ret_json, 200
 
@@ -163,5 +163,4 @@ api.add_resource(Detect, '/detect')
 api.add_resource(Refill, '/refill')
 
 if __name__ == '__main__':
-    app.run(host= '0.0.0.0')
-
+    app.run(host='0.0.0.0')
