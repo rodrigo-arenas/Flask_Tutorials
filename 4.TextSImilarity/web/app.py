@@ -84,6 +84,7 @@ class Detect(Resource):
                 'status': 302,
                 'message': 'Invalid username or password'
             }
+            return ret_json, 302
 
         num_tokens = count_tokens(username)
         if num_tokens <=0:
@@ -91,7 +92,7 @@ class Detect(Resource):
                 'status': 303,
                 'message': "out of tokens"
             }
-            return num_tokens, 303
+            return ret_json, 303
 
         nlp = spacy.load('en_core_web_sm')
 
@@ -102,7 +103,7 @@ class Detect(Resource):
 
         ret_json = {
             'status': 200,
-            'similarity': "similarity score calculated"
+            'similarity': "similarity score calculated",
             'score': ratio
         }
 
@@ -116,5 +117,52 @@ class Detect(Resource):
             })
 
         return ret_json, 200
+
+class Refill(Resource):
+    def post(self):
+        posted_data = request.get_json()
+        username = posted_data["username"]
+        password = posted_data["admin_password"]
+        refill_amount = posted_data["refill_amount"]
+
+        if not user_exists(username):
+            ret_json = {
+                'status': 301,
+                'message': "Invalid username"
+            }
+            return ret_json, 301
+
+        correct_pw = '123abc'
+
+        if not password == correct_pw:
+            ret_json = {
+                'status': 302,
+                'message': 'Invalid admin password'
+            }
+            return ret_json, 302
+
+        current_tokens = count_tokens(username)
+        users.update(
+            {
+                "Username": username,
+                {
+                    "$set": {"Tokens": current_tokens +refill_amount}
+                }
+            })
+
+        ret_json = {
+            'status': 200,
+            'message': "Refilled Tokens",
+            'tokens': current_tokens +refill_amount
+        }
+        return ret_json, 200
+
+
+api.add_resource(Register, '/register')
+api.add_resource(Detect, '/detect')
+api.add_resource(Refill, '/refill')
+
+if __name__ == '__main__':
+    app.run(host= '0.0.0.0')
 
 
