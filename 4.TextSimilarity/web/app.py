@@ -108,13 +108,13 @@ class Detect(Resource):
         }
 
         current_tokens = count_tokens(username)
-        users.update(
-            {
-                "Username": username,
-                {
-                    "$set": {"Tokens": current_tokens-1}
-                }
-            })
+        users.update({
+            "Username": username},
+            {"$set": {
+                "Tokens": num_tokens - 1
+            }
+            }
+        )
 
         return ret_json, 200
 
