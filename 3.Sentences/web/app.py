@@ -111,6 +111,14 @@ class GetSentence(Resource):
             }
             return ret_json, 301
 
+        users.update({
+            "Username": username},
+            {"$set": {
+                "Tokens": num_tokens - 1
+            }
+            }
+        )
+
         sentence = users.find({'Username': username})[0]['Sentence']
         ret_json = {
             'status': 200,
