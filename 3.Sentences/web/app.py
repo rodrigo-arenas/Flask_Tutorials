@@ -18,6 +18,7 @@ def verify_pw(username, password):
     else:
         return False
 
+
 def count_tokens(username):
     tokens = users.find({'Username': username})[0]['Tokens']
     return tokens
@@ -31,7 +32,7 @@ class Register(Resource):
         # Generate hash to securely store password
         hashed_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
 
-        users.insert_many({
+        users.insert_one({
             'Username': username,
             'Password': hashed_pw,
             'Sentence': "",
