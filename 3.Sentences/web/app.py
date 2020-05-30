@@ -88,8 +88,41 @@ class Store(Resource):
         return ret_json, 200
 
 
+class GetSentence(Resource):
+    def get(self):
+        posted_data = request.get_json()
+        username = posted_data['username']
+        password = posted_data['password']
+
+        correct_pw = verify_pw(username, password)
+        if not correct_pw:
+            ret_json = {
+                'status': 302,
+                'message': 'Incorrect username or password'
+            }
+            return ret_json, 302
+
+        num_tokens = count_tokens(username)
+        if num_tokens <= 0:
+            ret_json = {
+                'status': 301,
+                'message': 'Not enough tokens'
+
+            }
+            return ret_json, 301
+
+        sentence = users.find({'Username': username})[0]['Sentence']
+        ret_json = {
+            'status': 200,
+            'sentence': sentence
+        }
+        return ret_json, 200
+
+
 api.add_resource(Register, '/register')
 api.add_resource(Store, '/store')
+api.add_resource(GetSentence, '/sentence')
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
