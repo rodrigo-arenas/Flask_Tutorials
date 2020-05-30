@@ -48,7 +48,7 @@ class Register(Resource):
             }
             return ret_json, 301
 
-        hash_pw = bcrypt.hashpw(password.encode('utf8'), bycript.gensalt())
+        hash_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
 
         users.insert_one({
             "Username": username,
