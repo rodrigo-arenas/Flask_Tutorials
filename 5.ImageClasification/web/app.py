@@ -105,7 +105,54 @@ class Refill(Resource):
         return ret_json, 200
 
 
+class Classify(Resource):
+    def post(self):
+        posted_data = request.get_json()
+        username = posted_data["username"]
+        password = posted_data["admin_password"]
+        url = posted_data["url"]
+
+        correct_pw = verify_pw(username, password)
+        if not correct_pw:
+            ret_json = {
+                'status': 302,
+                'message': 'Incorrect username or password'
+            }
+            return ret_json, 302
+
+        num_tokens = count_tokens(username)
+        if num_tokens <= 0:
+            ret_json = {
+                'status': 301,
+                'message': 'Not enough tokens'
+
+            }
+            return ret_json, 301
+
+
+        r = requests.get(url)
+        ret_json = {}
+        with open("temp.jpg", "wb") as f:
+            f.write(r.content)
+            proc = subprocess.Popen('python classify_image.py --model_dir =. --image_file =./temp.jpg')
+            proc.communicate()[0]
+            proc.wait()
+            with open('text.txt', 'wb') as g:
+                ret_json = json.load(g)
+
+        users.update({
+            "Username": username},
+            {"$set": {
+                "Tokens": num_tokens - 1
+            }
+            }
+        )
+
+        return ret_json, 200
+
+
 api.add_resource(Register, '/register')
+api.add_resource(Classify, '/classify')
 api.add_resource(Refill, '/refill')
 
 if __name__ == '__main__':
