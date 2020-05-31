@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_restful import Api, Resource
 from pymongo import MongoClient
 import bcrypt
@@ -6,7 +6,6 @@ import numpy as np
 import requests
 import subprocess
 import json
-
 
 app = Flask(__name__)
 api = Api(app)
@@ -37,6 +36,7 @@ def verify_pw(username, password):
 def count_tokens(username):
     tokens = users.find({"Username": username})[0]["Tokens"]
     return tokens
+
 
 class Register(Resource):
     def post(self):
@@ -129,9 +129,9 @@ class Classify(Resource):
             }
             return ret_json, 301
 
-
         r = requests.get(url)
         ret_json = {}
+
         with open("temp.jpg", "wb") as f:
             f.write(r.content)
             proc = subprocess.Popen('python classify_image.py --model_dir =. --image_file =./temp.jpg')
