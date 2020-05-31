@@ -1,8 +1,9 @@
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask_restful import Api, Resource
 from pymongo import MongoClient
 import bcrypt
-import numpy as np
+import numpy
+import tensorflow as tf
 import requests
 import subprocess
 import json
@@ -11,149 +12,152 @@ app = Flask(__name__)
 api = Api(app)
 
 client = MongoClient("mongodb://db:27017")
-db = client.ImageRecognitionDB
+db = client.IRG
 users = db["Users"]
 
 
-def user_exists(username):
-    if users.count_documents({"Username": username}) == 0:
+def UserExist(username):
+    if users.find({"Username": username}).count() == 0:
         return False
     else:
         return True
-
-
-def verify_pw(username, password):
-    if not user_exists(username):
-        return False
-
-    hashed_pw = users.find({"Username": username})[0]["Password"]
-    if bcrypt.hashpw(password.encode('utf'), hashed_pw) == hashed_pw:
-        return True
-    else:
-        return False
-
-
-def count_tokens(username):
-    tokens = users.find({"Username": username})[0]["Tokens"]
-    return tokens
 
 
 class Register(Resource):
     def post(self):
-        posted_data = request.get_json()
-        username = posted_data["username"]
-        password = posted_data["password"]
+        # Step 1 is to get posted data by the user
+        postedData = request.get_json()
 
-        if user_exists(username):
-            ret_json = {
+        # Get the data
+        username = postedData["username"]
+        password = postedData["password"]  # "123xyz"
+
+        if UserExist(username):
+            retJson = {
                 'status': 301,
-                'message': "Username already register"
+                'msg': 'Invalid Username'
             }
-            return ret_json, 301
+            return jsonify(retJson)
 
-        hash_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
+        hashed_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
 
-        users.insert_one({
+        # Store username and pw into the database
+        users.insert({
             "Username": username,
-            "Password": hash_pw,
-            "Tokens": 4
+            "Password": hashed_pw,
+            "Tokens": 10
         })
 
-        ret_json = {
-            'status': 200,
-            'message': "You've successfully signed up to the API"
+        retJson = {
+            "status": 200,
+            "msg": "You successfully signed up for the API"
         }
-        return ret_json, 200
+        return jsonify(retJson)
 
 
-class Refill(Resource):
-    def post(self):
-        posted_data = request.get_json()
-        username = posted_data["username"]
-        password = posted_data["admin_password"]
-        refill_amount = posted_data["refill_amount"]
+def verifyPw(username, password):
+    if not UserExist(username):
+        return False
 
-        if not user_exists(username):
-            ret_json = {
-                'status': 301,
-                'message': "Invalid username"
-            }
-            return ret_json, 301
+    hashed_pw = users.find({
+        "Username": username
+    })[0]["Password"]
 
-        correct_pw = '123abc'
+    if bcrypt.hashpw(password.encode('utf8'), hashed_pw) == hashed_pw:
+        return True
+    else:
+        return False
 
-        if not password == correct_pw:
-            ret_json = {
-                'status': 302,
-                'message': 'Invalid admin password'
-            }
-            return ret_json, 302
 
-        current_tokens = count_tokens(username)
-        users.update(
-            {"Username": username},
-            {
-                "$set": {"Tokens": current_tokens + refill_amount}
-            }
-        )
+def generateReturnDictionary(status, msg):
+    retJson = {
+        "status": status,
+        "msg": msg
+    }
+    return retJson
 
-        ret_json = {
-            'status': 200,
-            'message': "Refilled Tokens",
-            'tokens': current_tokens + refill_amount
-        }
-        return ret_json, 200
+
+def verifyCredentials(username, password):
+    if not UserExist(username):
+        return generateReturnDictionary(301, "Invalid Username"), True
+
+    correct_pw = verifyPw(username, password)
+
+    if not correct_pw:
+        return generateReturnDictionary(302, "Incorrect Password"), True
+
+    return None, False
 
 
 class Classify(Resource):
     def post(self):
-        posted_data = request.get_json()
-        username = posted_data["username"]
-        password = posted_data["password"]
-        url = posted_data["url"]
+        postedData = request.get_json()
 
-        correct_pw = verify_pw(username, password)
-        if not correct_pw:
-            ret_json = {
-                'status': 302,
-                'message': 'Incorrect username or password'
-            }
-            return ret_json, 302
+        username = postedData["username"]
+        password = postedData["password"]
+        url = postedData["url"]
 
-        num_tokens = count_tokens(username)
-        if num_tokens <= 0:
-            ret_json = {
-                'status': 301,
-                'message': 'Not enough tokens'
+        retJson, error = verifyCredentials(username, password)
+        if error:
+            return jsonify(retJson)
 
-            }
-            return ret_json, 301
+        tokens = users.find({
+            "Username": username
+        })[0]["Tokens"]
+
+        if tokens <= 0:
+            return jsonify(generateReturnDictionary(303, "Not Enough Tokens"))
 
         r = requests.get(url)
-        ret_json = {}
-
-        with open("temp.jpg", "wb") as f:
+        retJson = {}
+        with open('temp.jpg', 'wb') as f:
             f.write(r.content)
-            proc = subprocess.Popen('python classify_image.py --model_dir =. --image_file =./temp.jpg')
-            proc.communicate()[0]
+            proc = subprocess.Popen('python classify_image.py --model_dir=. --image_file=./temp.jpg',
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            ret = proc.communicate()[0]
             proc.wait()
-            with open('text.txt', 'wb') as g:
-                ret_json = json.load(g)
+            with open("text.txt") as g:
+                retJson = json.load(g)
 
         users.update({
-            "Username": username},
-            {"$set": {
-                "Tokens": num_tokens - 1
+            "Username": username
+        }, {
+            "$set": {
+                "Tokens": tokens - 1
             }
-            }
-        )
+        })
 
-        return ret_json, 200
+        return retJson
+
+
+class Refill(Resource):
+    def post(self):
+        postedData = request.get_json()
+
+        username = postedData["username"]
+        password = postedData["admin_pw"]
+        amount = postedData["amount"]
+
+        if not UserExist(username):
+            return jsonify(generateReturnDictionary(301, "Invalid Username"))
+
+        correct_pw = "abc123"
+        if not password == correct_pw:
+            return jsonify(generateReturnDictionary(302, "Incorrect Password"))
+
+        users.update({
+            "Username": username
+        }, {
+            "$set": {
+                "Tokens": amount
+            }
+        })
+        return jsonify(generateReturnDictionary(200, "Refilled"))
 
 
 api.add_resource(Register, '/register')
 api.add_resource(Classify, '/classify')
 api.add_resource(Refill, '/refill')
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host='0.0.0.0')
