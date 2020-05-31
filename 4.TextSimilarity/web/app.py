@@ -13,7 +13,7 @@ users = db["Users"]
 
 
 def user_exists(username):
-    if users.find({"Username": username}).count_documents () == 0:
+    if users.count_documents({"Username": username}) == 0:
         return False
     else:
         return True
@@ -95,7 +95,6 @@ class Detect(Resource):
             return ret_json, 303
 
         nlp = spacy.load('en_core_web_sm')
-
         text1 = nlp(text1)
         text2 = nlp(text2)
 
