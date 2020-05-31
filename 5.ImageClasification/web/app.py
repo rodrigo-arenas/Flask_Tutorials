@@ -109,7 +109,7 @@ class Classify(Resource):
     def post(self):
         posted_data = request.get_json()
         username = posted_data["username"]
-        password = posted_data["admin_password"]
+        password = posted_data["password"]
         url = posted_data["url"]
 
         correct_pw = verify_pw(username, password)
